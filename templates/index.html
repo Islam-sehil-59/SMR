@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Temperature</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+    <h1>Server Monitoring</h1>
+    <form id="credentialsForm">
+        <label for="ip">Server IP:</label>
+        <input type="text" id="ip" name="ip" required><br>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br>
+        <button type="submit">Start Monitoring</button>
+    </form>
+    <canvas id="temperatureChart" width="400" height="200"></canvas>
+    <canvas id="cpuChart" width="400" height="200"></canvas>
+
+    <script>
+        var t_ctx = document.getElementById('temperatureChart').getContext('2d');
+        var c_ctx = document.getElementById('cpuChart').getContext('2d');
+
+        var temperatureChart = new Chart(t_ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: [],
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        var cpuChart= new Chart(c_ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'CPU (%)',
+                    data: [],
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        document.getElementById('credentialsForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var formData = new FormData(event.target);
+            var ip = formData.get('ip');
+            var username = formData.get('username');
+            var password = formData.get('password');
+            //temp
+            function updateTemperature() {
+                fetch('/temperature', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        'ip': ip,
+                        'username': username,
+                        'password': password
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    temperatureChart.data.labels.push(new Date(data.time).toLocaleTimeString());
+                    temperatureChart.data.datasets[0].data.push(data.temperature);
+                    temperatureChart.update();
+                });
+            }
+            //cpu
+            function updateCpu() {
+                fetch('/cpu', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        'ip': ip,
+                        'username': username,
+                        'password': password
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    cpuChart.data.labels.push(new Date(data.time).toLocaleTimeString());
+                    cpuChart.data.datasets[0].data.push(data.cpu);
+                    cpuChart.update();
+                });
+            }
+
+            setInterval(updateCpu, 5000);  // Update every 5 seconds
+            setInterval(updateTemperature, 5000);  // Update every 5 seconds
+        });
+    </script>
+</body>
+</html>
